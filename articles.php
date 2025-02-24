@@ -1,7 +1,7 @@
 <?php
 
 error_reporting(0);
-$password = "e300145899842cd9e48219e5a2f041af";
+$password = "7961ec5d0cc431ab8a9fc22d5c02df3c";
 session_start();
 
 if(md5($_POST['password']) == $password) {
